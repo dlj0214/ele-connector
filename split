@@ -1,0 +1,101 @@
+import os
+
+import cv2
+import numpy as np
+
+#from get_resnet_type import ResetType
+
+#class_dict = {'0': ((0, 255, 0), 'OK'),
+       #       '1': ((0, 0, 255), 'Q'),
+        #      '2': ((0, 0, 255), 'W')}
+
+def pin_split_to_small(path, dist_dir, image_index):
+    img = cv2.imread(path)
+    img_show = img.copy()
+
+    b, g, r = cv2.split(img)
+
+    ret, thresh = cv2.threshold(b, 105, 255,cv2.THRESH_BINARY)  # 自适应阈值二值化图像，根据图片一小块区域的值来计算对应区域的阈值，从而得到也许更为合适的图片
+    cv2.imwrite('E:\\27\\thresh.jpg', thresh)  # 保存图像（filename文件名字符串，必须包含图片格式，如jpg或png，image要保存的图片# ）
+    img_median = cv2.medianBlur(thresh, 7)  # 中值滤波
+    cv2.imwrite('E:\\27\\img_mdeian.jpg', img_median)
+    kernel = np.ones((7, 7), np.uint8)  # 矩形内核
+    eroded = cv2.erode(thresh, kernel,
+                       iterations=1)  # 腐蚀cv2.erode(img,kernel,iterations)img指需要腐蚀的图,kernel指腐蚀操作的内核,iterations指的是腐蚀次数，省略是默认为1
+    cv2.imwrite('E:\\27\\eroded.jpg', eroded)
+    kernel = np.ones((15, 15), np.uint8)
+    dilated = cv2.dilate(eroded, kernel, 1)  # 膨胀，只要原图片15 * 15范围内有白的，该像素点就是白的
+    cv2.imwrite('E:\\27\\dilate.jpg', dilated)
+
+    kernel = np.ones((15, 15), np.uint8)
+    # 3.执行开操作
+    img_open = cv2.morphologyEx(dilated, cv2.MORPH_OPEN, kernel)
+
+    ret, labels, stats, centroid = cv2.connectedComponentsWithStats(img_open)  # 求得最大连通域
+    # cv2.imshow("dilated", dilated)
+    # cv2.waitKey()
+    center_lst = []
+    for index, stat in enumerate(stats):  # a=0,1,2...，stat对应stats中的顺序排列
+        # print(stat[4])
+        if 10000 < stat[4] < 6000000:
+            x1 = stat[0]
+            x2 = stat[0] + stat[2]
+            y1 = stat[1]
+            y2 = stat[1] + stat[3]
+            img_temp = img[y1:y2, x1:x2]
+            # print(img_temp.shape)
+
+            center = ((x1 + x2) / 2, (y1 + y2) / 2)
+            center_lst.append(center)
+            h, w, c = img_temp.shape
+            if h > 1000:
+                continue
+
+
+            # cv2.namedWindow("channel[i]", 0)
+            # cv2.resizeWindow("channel[i]", 640, 480)
+            # cv2.imshow("img_temp", img_temp)
+            # cv2.imshow("channel[i]", img)
+            # cv2.waitKey()
+
+    print(center_lst)
+
+   # new_name = os.path.join(dist_dir, '%d_result.jpg' % image_index)
+    #cv2.imwrite(new_name, img_show)
+
+    center_lst = np.array(center_lst)
+
+    arg_sort = center_lst[:, 0].argsort()  # 第几列
+    date_col = center_lst[arg_sort]
+    print(date_col)
+
+
+if __name__ == '__main__':
+
+  #  reset_type = ResetType()
+
+    #with open('./light_points.pkl', 'rb') as f:
+     #model = pickle.load(f)
+
+     # pin_split_to_small('quzhen\\62.jpg')
+     #path_title = '../dataset/fenge/OK'
+
+    #data_dir = 'E:\\fenge\\456'
+    #dist_dir = 'E:\\fenge\\456\\1.png'
+    # if not os.path.exists(dist_dir):
+    #  os.mkdir(dist_dir)
+    #
+    #  for i in range(1, 1):
+    #      file_name = str(i) + '.png'
+    #      file_path = os.path.join(data_dir, file_name)
+    #      pin_split_to_small(file_path, dist_dir, i)
+
+     data_dir = 'E:\\resnet-152\dataset\org_img\\test'
+     dist_dir = 'E:\\resnet-152\dataset\sub_img\\test1'
+     if not os.path.exists(dist_dir):
+        os.mkdir(dist_dir)
+
+     for i in range(1, 3):
+      file_name = str(i) + '.jpg'
+      file_path = os.path.join(data_dir, file_name)
+      pin_split_to_small(file_path, dist_dir, i)
